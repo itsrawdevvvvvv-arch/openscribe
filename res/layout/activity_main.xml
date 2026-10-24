@@ -160,57 +160,6 @@
                 android:src="@drawable/ic_chevron" />
         </LinearLayout>
 
-        <!-- Settings card -->
-        <LinearLayout
-            android:id="@+id/card_settings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/card_ripple"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="18dp">
-
-            <ImageView
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:contentDescription="@string/settings_title"
-                android:src="@drawable/ic_tune" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="16dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:letterSpacing="0.06"
-                    android:text="@string/settings_title"
-                    android:textColor="@color/ink"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="@string/settings_sub"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron" />
-        </LinearLayout>
-
         <TextView
             android:id="@+id/footer"
             android:layout_width="match_parent"

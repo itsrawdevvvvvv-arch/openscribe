@@ -5,33 +5,35 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
+import org.vosk.Model;
+import org.vosk.Recognizer;
+
 import java.util.Locale;
 
-public class LiveActivity extends Activity implements RecognitionListener {
+public class LiveActivity extends Activity {
 
     private static final int REQ_AUDIO = 10;
+    private static final int SR = 16000;
 
-    private SpeechRecognizer sr;
     private TextView timer, status, text, hint, btnCopy, btnClear;
     private WaveformView wave;
     private PulseRingView pulse;
     private ImageView btnRecord;
 
-    private boolean recording = false;
+    private volatile boolean recording = false;
+    private Thread recThread;
     private final StringBuilder finalText = new StringBuilder();
     private String partial = "";
     private long startTime = 0;
@@ -45,10 +47,6 @@ public class LiveActivity extends Activity implements RecognitionListener {
             timer.setText(String.format(Locale.US, "%02d:%02d:%02d", e / 3600, (e % 3600) / 60, e % 60));
             h.postDelayed(this, 200);
         }
-    };
-
-    private final Runnable restarter = new Runnable() {
-        @Override public void run() { if (recording) listen(); }
     };
 
     @Override protected void onCreate(Bundle b) {
@@ -102,14 +100,42 @@ public class LiveActivity extends Activity implements RecognitionListener {
     }
 
     private void start() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            toast("No speech recognition service is available on this device");
+        if (VoskEngine.isReady()) {
+            begin();
             return;
         }
-        if (sr == null) {
-            sr = SpeechRecognizer.createSpeechRecognizer(this);
-            sr.setRecognitionListener(this);
-        }
+        status.setText(R.string.preparing);
+        hint.setText("Unpacking the on-device model (one time)…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    final Model m = VoskEngine.model(LiveActivity.this, new VoskEngine.Progress() {
+                        @Override public void onProgress(final int percent) {
+                            runOnUiThread(new Runnable() {
+                                @Override public void run() {
+                                    if (!recording) status.setText("PREPARING " + percent + "%");
+                                }
+                            });
+                        }
+                    });
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() { begin(); }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            status.setText(R.string.stopped);
+                            hint.setText(R.string.tap_to_start);
+                            toast("Model error: " + e.getMessage());
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void begin() {
+        if (recording) return;
         recording = true;
         startTime = System.currentTimeMillis();
         finalText.setLength(0);
@@ -121,43 +147,76 @@ public class LiveActivity extends Activity implements RecognitionListener {
         pulse.setActive(true);
         Anim.press(btnRecord);
         h.post(ticker);
-        listen();
+
+        recThread = new Thread(new Runnable() {
+            @Override public void run() {
+                AudioRecord ar = null;
+                Recognizer rec = null;
+                try {
+                    Model m = VoskEngine.model(LiveActivity.this, null);
+                    int min = AudioRecord.getMinBufferSize(SR, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+                    if (min <= 0) min = SR * 2;
+                    int buf = Math.max(min, 4096);
+                    ar = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SR,
+                            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, buf);
+                    rec = new Recognizer(m, (float) SR);
+                    rec.setWords(false);
+                    ar.startRecording();
+                    short[] data = new short[2048];
+                    while (recording) {
+                        int n = ar.read(data, 0, data.length);
+                        if (n <= 0) continue;
+                        wave.setLevel(level(data, n));
+                        if (rec.acceptWaveForm(data, n)) {
+                            final String res = VoskEngine.textOf(rec.getResult());
+                            if (!res.isEmpty()) runOnUiThread(new Runnable() {
+                                @Override public void run() { appendFinal(res); }
+                            });
+                        } else {
+                            final String p = VoskEngine.textOf(rec.getPartialResult());
+                            runOnUiThread(new Runnable() {
+                                @Override public void run() { partial = p; render(); }
+                            });
+                        }
+                    }
+                    final String fin = VoskEngine.textOf(rec.getFinalResult());
+                    if (!fin.isEmpty()) runOnUiThread(new Runnable() {
+                        @Override public void run() { appendFinal(fin); }
+                    });
+                } catch (Exception ignored) {
+                } finally {
+                    try { if (ar != null) { ar.stop(); ar.release(); } } catch (Exception ignored) {}
+                    if (rec != null) rec.close();
+                }
+            }
+        });
+        recThread.start();
     }
 
-    private void listen() {
-        if (sr == null) return;
-        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-        i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-        String lang = Prefs.lang(this);
-        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
-        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang);
-        i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
-        if (Prefs.offline(this)) i.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
-        try {
-            sr.startListening(i);
-        } catch (Exception e) {
-            scheduleRestart(400);
-        }
+    private void appendFinal(String s) {
+        if (finalText.length() > 0) finalText.append(' ');
+        finalText.append(s);
+        partial = "";
+        render();
+    }
+
+    private static float level(short[] d, int n) {
+        long sum = 0;
+        for (int i = 0; i < n; i++) sum += (long) d[i] * d[i];
+        double rms = Math.sqrt(sum / (double) n) / 32768.0;
+        float v = (float) (rms * 6.0);
+        if (v < 0f) v = 0f;
+        if (v > 1f) v = 1f;
+        return v;
     }
 
     private void stop() {
         recording = false;
         h.removeCallbacks(ticker);
-        h.removeCallbacks(restarter);
-        if (sr != null) {
-            try { sr.stopListening(); } catch (Exception ignored) {}
-        }
         status.setText(R.string.stopped);
         hint.setText(R.string.tap_to_start);
         wave.setActive(false);
         pulse.setActive(false);
-    }
-
-    private void scheduleRestart(long ms) {
-        h.removeCallbacks(restarter);
-        h.postDelayed(restarter, ms);
     }
 
     private void render() {
@@ -175,9 +234,8 @@ public class LiveActivity extends Activity implements RecognitionListener {
 
     @Override protected void onDestroy() {
         stop();
-        if (sr != null) {
-            sr.destroy();
-            sr = null;
+        if (recThread != null) {
+            try { recThread.join(600); } catch (InterruptedException ignored) {}
         }
         super.onDestroy();
     }
@@ -188,53 +246,4 @@ public class LiveActivity extends Activity implements RecognitionListener {
             else toast("Microphone permission is needed to dictate");
         }
     }
-
-    // ---- RecognitionListener ----
-
-    @Override public void onReadyForSpeech(Bundle params) {}
-
-    @Override public void onBeginningOfSpeech() {}
-
-    @Override public void onRmsChanged(float rmsdB) {
-        float lvl = (rmsdB + 2f) / 12f;
-        if (lvl < 0f) lvl = 0f;
-        if (lvl > 1f) lvl = 1f;
-        wave.setLevel(lvl);
-    }
-
-    @Override public void onBufferReceived(byte[] buffer) {}
-
-    @Override public void onEndOfSpeech() {}
-
-    @Override public void onError(int error) {
-        if (!recording) return;
-        if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) return;
-        scheduleRestart(250);
-    }
-
-    @Override public void onResults(Bundle results) {
-        if (!recording) return;
-        ArrayList<String> list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (list != null && !list.isEmpty()) {
-            String s = list.get(0).trim();
-            if (!s.isEmpty()) {
-                if (finalText.length() > 0) finalText.append(' ');
-                finalText.append(s);
-            }
-        }
-        partial = "";
-        render();
-        scheduleRestart(120);
-    }
-
-    @Override public void onPartialResults(Bundle partialResults) {
-        if (!recording) return;
-        ArrayList<String> list = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        if (list != null && !list.isEmpty()) {
-            partial = list.get(0).trim();
-            render();
-        }
-    }
-
-    @Override public void onEvent(int eventType, Bundle params) {}
 }

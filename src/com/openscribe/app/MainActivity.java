@@ -13,7 +13,6 @@ public class MainActivity extends Activity {
 
         View live = findViewById(R.id.card_live);
         View file = findViewById(R.id.card_file);
-        View set = findViewById(R.id.card_settings);
 
         live.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { Anim.press(v); open(LiveActivity.class); }
@@ -21,15 +20,11 @@ public class MainActivity extends Activity {
         file.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { Anim.press(v); open(FileActivity.class); }
         });
-        set.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { Anim.press(v); open(SettingsActivity.class); }
-        });
 
         View[] items = {
                 findViewById(R.id.header),
                 findViewById(R.id.card_live),
                 findViewById(R.id.card_file),
-                findViewById(R.id.card_settings),
                 findViewById(R.id.footer)
         };
         for (int i = 0; i < items.length; i++) Anim.riseIn(items[i], 60L * i);

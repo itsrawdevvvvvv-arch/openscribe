@@ -1,87 +1,85 @@
 # OpenScribe
 
-**An open-source, Wispr Flow–style dictation app for Android.** Speak and watch text
-appear live, or drop in an audio file and get a transcript plus a ready-to-use SRT
-subtitle file. Minimal monochrome UI, smooth animations, Android 9 (API 28) and up.
+**A fully on-device, open-source dictation app for Android** — a local take on the
+Wispr Flow experience. Speak and watch text appear live, or pick an audio file and
+get a transcript plus a ready-to-use SRT subtitle file.
 
-> Not affiliated with Wispr Flow. Built from scratch as a free, auditable alternative.
+**No internet. No account. No API key. The speech model ships inside the app.**
+
+> Not affiliated with Wispr Flow.
 
 ---
 
 ## Features
 
-- **Live dictation** — a big tap-to-record button, a reactive waveform, a live timer
-  and a transcript that updates word-by-word as you speak. Uses the phone's own
-  speech recogniser, so audio stays on-device when you enable "prefer offline".
-- **Audio → transcript + SRT** — pick any audio file and get the full transcript and
-  a timestamped `.srt` file you can save or share. Works with any OpenAI-compatible
-  `/audio/transcriptions` endpoint (OpenAI, Groq, a self-hosted Whisper server, …).
-- **Minimal, animated UI** — light card-based layout with outline cards, rounded
-  corners, staggered entrance animations and a hand-drawn waveform/pulse.
-- **Tiny and dependency-free** — no AndroidX, no third-party SDKs. ~50 KB APK.
+- **Live dictation** — tap the record button and text streams in word-by-word, with a
+  reactive waveform and a running timer. Captured from the mic and recognised locally.
+- **Audio → transcript + SRT** — pick any audio file; it is decoded on the device and
+  transcribed locally, producing a transcript and timestamped `.srt` cues you can copy,
+  save, or share.
+- **100% offline** — the only permission requested is `RECORD_AUDIO`. There is no
+  `INTERNET` permission at all.
+- **Minimal animated UI** — light canvas, outline cards, big rounded corners, monospace
+  numerals, staggered entrances, and custom waveform / pulse views.
+
+## How it runs locally
+
+Speech recognition is done by [Vosk](https://alphacephei.com/vosk/) (Apache-2.0),
+running on-device via `libvosk.so`. The model (`vosk-model-small-en-in-0.4`, Indian
+English, ~40 MB) is bundled in the APK under `assets/model/` and unpacked to private
+storage on first launch. Change the model by editing `fetch_model.sh`.
 
 ## Install
 
-Download the latest `OpenScribe-1.0.apk` from the **Releases** page and open it on your
-phone (you may need to allow installs from unknown sources).
+Grab the latest `OpenScribe-*.apk` from **Releases** and open it on your phone (allow
+installs from unknown sources if prompted).
 
 - Requires Android 9.0 (API 28) or newer.
-- Live dictation needs the microphone permission and a speech recognition service
-  (present on most devices; if the Google app is disabled you may need to enable it).
-
-## Using file transcription
-
-Open **Settings** and fill in:
-
-| Field | Example |
-|-------|---------|
-| Base URL | `https://api.openai.com/v1` |
-| API key | your key (`sk-…`) |
-| Model | `whisper-1` |
-
-Your key is stored only in the app's private preferences on the device. Requests go
-straight from the phone to the endpoint you configure — there is no middleman server.
+- ABIs: `arm64-v8a`, `armeabi-v7a`.
 
 ## Build from source
 
-No Gradle required. The project builds with the Android SDK build-tools directly
-(`aapt2` → `javac` → `d8` → `zipalign` → `apksigner`).
+No Gradle. The project builds with the Android SDK build-tools directly
+(`aapt2 → javac → d8 → zipalign → apksigner`).
 
 ```bash
-# Requires: JDK 17, Android SDK build-tools 34, android.jar for API 34
+./fetch_libs.sh     # pulls the Vosk + JNA classes and native libs into libs/
+./fetch_model.sh    # downloads the speech model into app/assets/model
+
 export JAVA_HOME=/path/to/jdk17
 export BT=/path/to/build-tools/34.0.0
 export PLATFORM=/path/to/platforms/android-34/android.jar
-export PATH=$JAVA_HOME/bin:$BT:$PATH
+export D8=/path/to/build-tools/35.0.0/d8   # d8 from build-tools 35+ (older d8 fails on JNA)
 
-bash build.sh          # produces build/apk/OpenScribe-1.0.apk
+./build.sh          # -> build/apk/OpenScribe-1.1.apk
 ```
+
+> `D8`: build-tools 34's d8 crashes on a JNA class; build-tools 35/36/37 work.
 
 ## Project layout
 
 ```
-AndroidManifest.xml
-res/                     layouts, drawables, vectors, theme
-src/com/openscribe/app/
-  MainActivity.java      home screen
-  LiveActivity.java      live dictation (SpeechRecognizer)
-  FileActivity.java      audio file -> transcript + SRT
-  SettingsActivity.java  engine + API configuration
-  WaveformView.java      animated waveform
-  PulseRingView.java     expanding record-button rings
-  ApiClient.java         multipart upload to /audio/transcriptions
-  SrtBuilder.java        SRT generation from segments
-  Prefs.java             settings storage
-build.sh                 manual APK build script
+app/
+  AndroidManifest.xml
+  assets/model/            bundled speech model (fetched, not in git)
+  res/                     layouts, drawables, vectors, theme
+  src/com/openscribe/app/
+    MainActivity.java      home screen
+    LiveActivity.java      live dictation (AudioRecord + Vosk)
+    FileActivity.java      audio file -> transcript + SRT
+    VoskEngine.java        model unpack + decoding + recognition
+    SrtBuilder.java        SRT generation from word timings
+    WaveformView.java      animated waveform
+    PulseRingView.java     record-button pulse rings
+fetch_libs.sh              fetch Vosk/JNA classes + native libs
+fetch_model.sh             fetch the speech model
+build.sh                   manual APK build
 ```
 
 ## Privacy
 
-- Live dictation uses the device recogniser; enable *Prefer on-device recognition* to
-  keep audio local.
-- File transcription sends the chosen audio to the endpoint **you** configure.
-- No analytics, no telemetry, no accounts.
+Everything happens on the device. No network calls, no telemetry, no accounts.
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See `LICENSE`. Vosk is Apache-2.0; the model ships under its own terms.

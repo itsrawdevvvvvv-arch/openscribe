@@ -1,0 +1,9 @@
+# build output
+build/
+*.apk
+*.idsig
+*.jks
+
+# fetched assets (see fetch_model.sh / fetch_libs.sh)
+app/assets/model/
+libs/

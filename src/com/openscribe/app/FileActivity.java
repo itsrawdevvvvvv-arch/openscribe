@@ -120,24 +120,16 @@ public class FileActivity extends Activity {
             toast("Pick an audio file first");
             return;
         }
-        String key = Prefs.key(this);
-        if (key == null || key.trim().isEmpty()) {
-            toast(getString(R.string.no_key));
-            startActivity(new Intent(this, SettingsActivity.class));
-            return;
-        }
         progress.setVisibility(View.VISIBLE);
         btnTranscribe.setAlpha(0.5f);
         btnTranscribe.setClickable(false);
-        text.setText(R.string.processing);
+        text.setText(VoskEngine.isReady() ? getString(R.string.processing) : getString(R.string.preparing));
         srt.setText("—");
 
-        final String n = name;
-        final String m = mime;
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
-                    final ApiClient.Result r = ApiClient.transcribe(FileActivity.this, uri, n, m);
+                    final VoskEngine.Result r = VoskEngine.transcribeFile(FileActivity.this, uri);
                     runOnUiThread(new Runnable() {
                         @Override public void run() { show(r); }
                     });
@@ -156,7 +148,7 @@ public class FileActivity extends Activity {
         }).start();
     }
 
-    private void show(ApiClient.Result r) {
+    private void show(VoskEngine.Result r) {
         progress.setVisibility(View.GONE);
         btnTranscribe.setAlpha(1f);
         btnTranscribe.setClickable(true);
@@ -164,7 +156,6 @@ public class FileActivity extends Activity {
         lastSrt = r.srt == null ? "" : r.srt.trim();
         text.setText(lastText.isEmpty() ? "(no speech detected)" : lastText);
         srt.setText(lastSrt.isEmpty() ? "—" : lastSrt);
-        Anim.riseIn(srt.getRootView().findViewById(R.id.text), 0);
     }
 
     private void copy() {
