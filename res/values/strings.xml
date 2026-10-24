@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OPENSCRIBE</string>
+    <string name="tagline">Speak. It types.</string>
+    <string name="pill">OPEN SOURCE · ON-DEVICE FIRST</string>
+
+    <string name="live_title">Live Dictation</string>
+    <string name="live_sub">Real-time speech to text, on device</string>
+    <string name="file_title">Transcribe Audio</string>
+    <string name="file_sub">Upload a file, get transcript + SRT</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_sub">Engine, language, API key</string>
+
+    <string name="footer">Runs the phone\'s own speech engine for live text. No account needed.\nFile transcription uses an OpenAI-compatible endpoint you configure.</string>
+
+    <string name="back">Back</string>
+    <string name="copy">Copy</string>
+    <string name="clear">Clear</string>
+    <string name="share">Share</string>
+    <string name="save_srt">Save SRT</string>
+    <string name="pick_file">Choose audio file</string>
+    <string name="transcribe">Transcribe</string>
+    <string name="tap_to_start">Tap to start listening</string>
+    <string name="listening">LISTENING</string>
+    <string name="stopped">READY</string>
+    <string name="processing">TRANSCRIBING…</string>
+    <string name="transcript">TRANSCRIPT</string>
+    <string name="srt">SRT SUBTITLES</string>
+    <string name="no_key">Add an API key in Settings to transcribe files.</string>
+</resources>
