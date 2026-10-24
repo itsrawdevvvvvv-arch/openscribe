@@ -123,16 +123,14 @@ public class FileActivity extends Activity {
         progress.setVisibility(View.VISIBLE);
         btnTranscribe.setAlpha(0.5f);
         btnTranscribe.setClickable(false);
-        text.setText(VoskEngine.isReady() ? getString(R.string.processing) : getString(R.string.preparing));
+        text.setText(WhisperEngine.isReady() ? getString(R.string.processing) : getString(R.string.preparing));
         srt.setText("—");
 
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
-                    final VoskEngine.Result r = VoskEngine.transcribeFile(FileActivity.this, uri);
-                    runOnUiThread(new Runnable() {
-                        @Override public void run() { show(r); }
-                    });
+                    final WhisperEngine.Result r = WhisperEngine.transcribeFile(FileActivity.this, uri);
+                    runOnUiThread(new Runnable() { @Override public void run() { show(r); } });
                 } catch (final Exception e) {
                     runOnUiThread(new Runnable() {
                         @Override public void run() {
@@ -148,7 +146,7 @@ public class FileActivity extends Activity {
         }).start();
     }
 
-    private void show(VoskEngine.Result r) {
+    private void show(WhisperEngine.Result r) {
         progress.setVisibility(View.GONE);
         btnTranscribe.setAlpha(1f);
         btnTranscribe.setClickable(true);
@@ -160,20 +158,14 @@ public class FileActivity extends Activity {
 
     private void copy() {
         String out = lastSrt.isEmpty() ? lastText : lastText + "\n\n" + lastSrt;
-        if (out.trim().isEmpty()) {
-            toast("Nothing to copy yet");
-            return;
-        }
+        if (out.trim().isEmpty()) { toast("Nothing to copy yet"); return; }
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("transcript", out));
         toast("Copied");
     }
 
     private void saveSrt() {
-        if (lastSrt.isEmpty()) {
-            toast("Transcribe a file first");
-            return;
-        }
+        if (lastSrt.isEmpty()) { toast("Transcribe a file first"); return; }
         String base = name == null ? "transcript" : name;
         int dot = base.lastIndexOf('.');
         if (dot > 0) base = base.substring(0, dot);
@@ -181,11 +173,8 @@ public class FileActivity extends Activity {
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("application/x-subrip");
         i.putExtra(Intent.EXTRA_TITLE, base + ".srt");
-        try {
-            startActivityForResult(i, REQ_CREATE);
-        } catch (Exception e) {
-            toast("Cannot open save dialog");
-        }
+        try { startActivityForResult(i, REQ_CREATE); }
+        catch (Exception e) { toast("Cannot open save dialog"); }
     }
 
     private void writeSrt(Uri dest) {
@@ -203,10 +192,7 @@ public class FileActivity extends Activity {
 
     private void share() {
         String out = lastSrt.isEmpty() ? lastText : lastText + "\n\n" + lastSrt;
-        if (out.trim().isEmpty()) {
-            toast("Nothing to share yet");
-            return;
-        }
+        if (out.trim().isEmpty()) { toast("Nothing to share yet"); return; }
         Intent i = new Intent(Intent.ACTION_SEND);
         i.setType("text/plain");
         i.putExtra(Intent.EXTRA_SUBJECT, name);

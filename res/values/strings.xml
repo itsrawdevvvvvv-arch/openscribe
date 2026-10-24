@@ -2,14 +2,14 @@
 <resources>
     <string name="app_name">OPENSCRIBE</string>
     <string name="tagline">Speak. It types.</string>
-    <string name="pill">100% ON-DEVICE · NO CLOUD</string>
+    <string name="pill">WHISPER · 100% ON-DEVICE</string>
 
     <string name="live_title">Live Dictation</string>
     <string name="live_sub">Real-time speech to text, on device</string>
     <string name="file_title">Transcribe Audio</string>
     <string name="file_sub">Pick a file, get transcript + SRT</string>
 
-    <string name="footer">Everything runs on your phone. The speech model is bundled inside the app — no internet, no account, no API key.</string>
+    <string name="footer">Runs OpenAI Whisper entirely on your phone. The model is bundled inside the app — no internet, no account, no API key. Supports Hindi, English and auto-detect.</string>
 
     <string name="back">Back</string>
     <string name="copy">Copy</string>

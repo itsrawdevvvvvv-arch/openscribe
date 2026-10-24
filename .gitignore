@@ -1,9 +1,11 @@
 # build output
 build/
+nb/
 *.apk
 *.idsig
 *.jks
 
-# fetched assets (see fetch_model.sh / fetch_libs.sh)
-app/assets/model/
+# fetched / generated (see fetch_model.sh / build_native.sh)
+modelstage/
 libs/
+.whisper.cpp/

@@ -1,37 +1,27 @@
 package com.openscribe.app;
 
 import java.util.List;
+import java.util.Locale;
 
 public final class SrtBuilder {
     private SrtBuilder() {}
 
-    /** Builds SRT cues from recognised words with real timestamps. */
-    public static String fromWords(List<VoskEngine.Word> words) {
-        if (words == null || words.isEmpty()) return "";
+    /** Builds SRT cues straight from Whisper's timestamped segments. */
+    public static String fromSegments(List<WhisperEngine.Segment> segs) {
+        if (segs == null || segs.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         int idx = 1;
-        int i = 0;
-        while (i < words.size()) {
-            double start = words.get(i).s;
-            double end = words.get(i).e;
-            StringBuilder cue = new StringBuilder(words.get(i).w);
-            int j = i + 1;
-            while (j < words.size()) {
-                double gap = words.get(j).s - end;
-                if (gap > 1.0 || (words.get(j).e - start) > 7.0 || (j - i) >= 14) break;
-                cue.append(' ').append(words.get(j).w);
-                end = words.get(j).e;
-                j++;
-            }
+        for (WhisperEngine.Segment s : segs) {
+            String t = s.text == null ? "" : s.text.trim();
+            if (t.isEmpty()) continue;
             sb.append(idx++).append('\n')
-                    .append(VoskEngine.fmtTime(start)).append(" --> ").append(VoskEngine.fmtTime(end)).append('\n')
-                    .append(cue).append("\n\n");
-            i = j;
+                    .append(fmt(s.start)).append(" --> ").append(fmt(s.end)).append('\n')
+                    .append(t).append("\n\n");
         }
         return sb.toString().trim();
     }
 
-    /** Fallback when no word timings are available: approximate cues from sentences. */
+    /** Fallback when there are no segment timings: approximate cues from sentences. */
     public static String fromText(String text) {
         if (text == null) text = "";
         String[] parts = text.trim().split("(?<=[.!?])\\s+");
@@ -44,10 +34,18 @@ public final class SrtBuilder {
             int words = p.split("\\s+").length;
             double dur = Math.max(1.2, words / 2.6);
             sb.append(i++).append('\n')
-                    .append(VoskEngine.fmtTime(t)).append(" --> ").append(VoskEngine.fmtTime(t + dur)).append('\n')
+                    .append(fmt(t)).append(" --> ").append(fmt(t + dur)).append('\n')
                     .append(p).append("\n\n");
             t += dur;
         }
         return sb.toString().trim();
+    }
+
+    static String fmt(double sec) {
+        long ms = Math.round(sec * 1000.0);
+        long h = ms / 3600000; ms %= 3600000;
+        long m = ms / 60000; ms %= 60000;
+        long s = ms / 1000; ms %= 1000;
+        return String.format(Locale.US, "%02d:%02d:%02d,%03d", h, m, s, ms);
     }
 }

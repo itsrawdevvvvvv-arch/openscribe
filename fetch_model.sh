@@ -1,16 +1,15 @@
 #!/bin/bash
-# Downloads the speech model into app/assets/model. The model is bundled inside
-# the APK (so the app works fully offline) but is kept out of git to keep the
-# repository small. Run once before building.
+# Downloads the Whisper model into modelstage/assets/whisper so build.sh can
+# bundle it inside the APK. The model is kept out of git to keep the repo small.
+#
+# Default: Whisper "small", q8_0 quantised (~253 MB) — multilingual (Hindi + English).
+# Swap MODEL for any whisper.cpp ggml file, e.g. ggml-small.bin (full precision),
+# ggml-medium-q5_0.bin (more accurate, larger), ggml-base.bin (smaller, faster).
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-MODEL=vosk-model-small-en-in-0.4   # Indian English; swap for another Vosk model if you like
-mkdir -p "$HERE/app/assets"
-cd "$HERE/app/assets"
-
-curl -L -o model.zip "https://alphacephei.com/vosk/models/$MODEL.zip"
-rm -rf model
-unzip -q model.zip
-mv "$MODEL" model
-rm -f model.zip
-echo "model ready at app/assets/model"
+MODEL=ggml-small-q8_0.bin
+DEST="$HERE/modelstage/assets/whisper"
+mkdir -p "$DEST"
+cd "$DEST"
+curl -L -o "$MODEL" "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$MODEL"
+echo "model ready at $DEST/$MODEL"
